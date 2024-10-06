@@ -1,0 +1,37 @@
+# Используем базовый образ Python
+FROM python:3.9-slim
+
+# Устанавливаем необходимые системные зависимости
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libfreetype6-dev \
+    libatlas-base-dev \
+    gfortran \
+    && rm -rf /var/lib/apt/lists/*
+
+# Устанавливаем pip и обновляем его
+RUN pip install --upgrade pip
+
+# Устанавливаем зависимости из файла requirements.txt
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Устанавливаем дополнительные библиотеки, которые могут потребоваться
+RUN pip install numpy scipy pywt pillow
+
+# Устанавливаем wheel для оптимизации установки пакетов
+RUN pip install wheel
+
+# Устанавливаем все пакеты из requirements.txt с использованием wheel
+ENV PIP_WHEEL_DIR=/wheelhouse
+ENV WHEELHOUSE=/wheelhouse
+ENV PIP_FIND_LINKS=/wheelhouse
+RUN pip wheel_inspect $(cat requirements.txt | tr '\n' ' ') && \
+    pip install --no-deps --find-links $WHEELHOUSE -r $(mktemp)
+
+# Устанавливаем ваш проект
+WORKDIR /app
+COPY . .
+
+# Определяем точку входа
+CMD ["python", "main.py"]
